@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#151a17">
+<meta name="apple-mobile-web-app-title" content="Ward Assist">
+<title>Ward Round Assist</title>
+<style>
+:root{
+  --bg:#151a17; --panel:#1f2622; --panel2:#29312c; --line:#323b35;
+  --text:#ece8e1; --muted:#98a39b; --accent:#3f9d6b; --green:#8fe0a8; --greenbg:#17301f;
+  --amber:#e7b45a; --err:#e0605a; --fs:18px;
+  --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Roboto,sans-serif}
+body{display:flex;flex-direction:column;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select,textarea{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+header{padding:calc(var(--safe-t) + 10px) 14px 8px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+header h1{flex:1;font-size:17px;margin:0;font-weight:650}
+header h1 small{display:block;font-size:12px;color:var(--muted);font-weight:400}
+.iconbtn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:var(--panel);flex:none;font-size:18px}
+.statusbar{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;background:#555;display:inline-block;margin-right:5px;vertical-align:middle}
+.rec .dot{background:var(--err);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.3}}
+.spacer{flex:1}
+.chip{font-size:12px;padding:5px 9px;border-radius:8px;background:var(--panel2);color:var(--muted)}
+.chip.on{background:var(--greenbg);color:var(--green)}
+#langSel{padding:5px 8px;font-size:13px;border-radius:8px}
+#caseBar{margin:0 14px 6px;padding:8px 10px;border-radius:10px;background:var(--panel);font-size:13px;color:var(--muted);display:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#caseBar.show{display:block}
+#banner{display:none;margin:6px 14px 0;padding:12px;border-radius:12px;background:#3a2422;color:#f3c7c2;font-size:14px;line-height:1.5}
+#banner.show{display:block}
+main{flex:1;overflow-y:auto;padding:6px 16px 150px;-webkit-overflow-scrolling:touch}
+.empty{color:var(--muted);text-align:center;margin-top:14vh;line-height:1.7;font-size:15px}
+.empty b{color:var(--text)}
+.seg{margin:0 0 14px;font-size:var(--fs);line-height:1.5;word-wrap:break-word;border-left:3px solid transparent;padding-left:8px;margin-left:-11px}
+.seg .ts{display:block;font-size:12px;color:var(--muted);margin-bottom:2px;font-variant-numeric:tabular-nums}
+.seg .tx{outline:none;border-radius:6px}
+.seg.q{border-left-color:var(--amber)}
+.seg.q .ts:after{content:"  ❓ คำถาม";color:var(--amber);font-weight:600}
+.ans{display:block;margin-top:6px;padding:10px 12px;border-radius:12px;background:var(--greenbg);color:var(--green);font-size:calc(var(--fs) * .92);line-height:1.5;white-space:pre-wrap}
+.ans .acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ans .acts button{font-size:13px;padding:7px 11px;border-radius:9px;background:#23452f;color:#c9f2d5}
+.ans .acts button.main{background:var(--accent);color:#fff;font-weight:600}
+.ans .hint{font-size:12px;color:#6fae84;margin-top:6px}
+.ans.err{color:#f3c7c2;background:#3a2422}
+.cursor:after{content:"▍";animation:pulse 1s infinite}
+#interim{color:var(--muted);font-size:var(--fs);line-height:1.5}
+.bottombar{position:fixed;left:0;right:0;bottom:0;padding:12px 18px calc(var(--safe-b) + 14px);
+  background:linear-gradient(transparent,var(--bg) 30%);display:flex;align-items:center;justify-content:space-between}
+.side{width:72px;height:54px;border-radius:16px;background:var(--panel);display:grid;place-items:center;font-size:12px;color:var(--text);line-height:1.2;text-align:center}
+.side b{font-size:18px;display:block}
+#askBtn{background:#3b3220;color:var(--amber)}
+#recBtn{width:76px;height:76px;border-radius:50%;background:var(--accent);display:grid;place-items:center;box-shadow:0 4px 20px rgba(63,157,107,.35)}
+#recBtn .ic{width:26px;height:26px;border-radius:50%;background:#fff}
+.rec #recBtn{background:var(--err)}
+.rec #recBtn .ic{border-radius:6px;width:24px;height:24px}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.backdrop.show{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;overflow-y:auto;background:var(--panel);border-radius:20px 20px 0 0;
+  padding:8px 18px calc(var(--safe-b) + 20px);transform:translateY(105%);transition:transform .25s;z-index:11}
+.sheet.show{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:#555;margin:4px auto 12px}
+.sheet h2{font-size:18px;margin:4px 0 12px}
+.sheet h3{font-size:14px;color:var(--muted);margin:18px 0 8px;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;margin:10px 0}
+.row label{flex:1}
+.btn{display:block;width:100%;text-align:left;padding:14px;border-radius:12px;background:var(--panel2);margin:8px 0;font-size:15px}
+.btn.primary{background:var(--accent);color:#fff;text-align:center;font-weight:600}
+.btn.danger{color:var(--err)}
+textarea.wide,input.wide{width:100%}
+textarea#caseTxt{min-height:150px;line-height:1.5}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+.help{font-size:14px;line-height:1.6;color:#d6d1c8}
+.help ol{padding-left:20px;margin:6px 0}
+.switch{position:relative;width:48px;height:28px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch span{position:absolute;inset:0;background:#444;border-radius:20px;transition:.2s}
+.switch span:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+span{background:var(--accent)}
+.switch input:checked+span:before{transform:translateX(20px)}
+.fsbtn{width:44px;height:40px;border-radius:10px;background:var(--panel2)}
+#toast{position:fixed;left:50%;top:calc(var(--safe-t) + 14px);transform:translate(-50%,-90px);background:#333;color:#fff;padding:10px 16px;border-radius:12px;
+  font-size:14px;z-index:20;transition:transform .25s;max-width:90vw;text-align:center}
+#toast.show{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ward Round Assist<small id="modeTxt">ตรวจจับคำถาม → แตะเพื่อถาม Claude</small></h1>
+  <button class="iconbtn" id="settingsBtn" aria-label="Settings">⚙︎</button>
+</header>
+<div class="statusbar">
+  <span><span class="dot"></span><span id="stateTxt">พร้อม</span></span>
+  <span id="timer">00:00</span>
+  <span id="qCount">0 คำถาม</span>
+  <span class="spacer"></span>
+  <button class="chip on" id="autoChip">ตรวจจับ: เปิด</button>
+  <select id="langSel" aria-label="Language">
+    <option value="th-TH">ไทย (ปนอังกฤษ)</option>
+    <option value="en-US">English (US)</option>
+    <option value="en-GB">English (UK)</option>
+  </select>
+</div>
+<div id="caseBar"></div>
+<div id="banner"></div>
+
+<main id="main">
+  <div id="segs"></div>
+  <div id="interim"></div>
+  <div class="empty" id="empty">
+    กด <b>●</b> ตอนเริ่มราวน์<br>
+    พออาจารย์ถาม ประโยคจะถูกไฮไลต์ <span style="color:var(--amber)">❓</span><br>
+    แล้วมีแถบ<span style="color:var(--green)">สีเขียว</span>ให้แตะถาม Claude ทันที<br>
+    <span class="note">ไม่จับคำถามเอง? กดปุ่ม ❓ ถามเลย ด้านล่าง<br>ใส่ข้อมูลเคสก่อนเข้าเตียงได้ที่ปุ่ม 📋 เคส</span>
+  </div>
+</main>
+
+<div class="bottombar">
+  <button class="side" id="caseBtn"><b>📋</b>เคส</button>
+  <button id="recBtn" aria-label="Record"><span class="ic"></span></button>
+  <button class="side" id="askBtn"><b>❓</b>ถามเลย</button>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="sheet" id="caseSheet">
+  <div class="grab"></div>
+  <h2>ข้อมูลเคสเตียงนี้</h2>
+  <p class="note">ใส่สั้น ๆ เช่น "M 45 y, SCC scalp s/p wide excision + ALT free flap POD3, flap สีดี" — Claude จะใช้ประกอบการตอบ<br><b>ห้ามใส่ชื่อ/HN/เลขบัตร</b></p>
+  <textarea id="caseTxt" class="wide" placeholder="Dx / operation / POD / ประเด็นที่น่าจะโดนถาม"></textarea>
+  <button class="btn primary" id="caseSave">ใช้ข้อมูลนี้</button>
+  <button class="btn" id="caseNext">➡︎ เตียงถัดไป (ล้างเคส + ล้าง transcript)</button>
+</div>
+
+<div class="sheet" id="setSheet">
+  <div class="grab"></div>
+  <h2>ตั้งค่า</h2>
+  <div class="row"><label>ตรวจจับคำถามอัตโนมัติ</label>
+    <label class="switch"><input type="checkbox" id="optAuto"><span></span></label></div>
+  <div class="row"><label>ความยาวคำตอบ</label>
+    <select id="optLen"><option value="short">สั้นมาก (พูดตอบได้ทันที)</option><option value="mid">ปานกลาง</option><option value="long">ละเอียด (ไว้อ่านทบทวน)</option></select></div>
+  <div class="row"><label>ซ่อนตัวเลขยาว (HN, เบอร์) ก่อนส่งให้ Claude</label>
+    <label class="switch"><input type="checkbox" id="optRedact"><span></span></label></div>
+  <div class="row"><label>เก็บ transcript ไว้หลังปิดแอป</label>
+    <label class="switch"><input type="checkbox" id="optKeep"><span></span></label></div>
+  <div class="row"><label>ขนาดตัวอักษร</label>
+    <button class="fsbtn" id="fsDown">A−</button><button class="fsbtn" id="fsUp">A+</button></div>
+
+  <h3>คำตอบขึ้นอัตโนมัติ (ไม่บังคับ — ต้องมี API key)</h3>
+  <p class="note">ถ้าใส่ Anthropic API key (จาก console.anthropic.com · เสียค่าใช้จ่ายตามการใช้งาน แยกจากค่าสมาชิก Claude) คำตอบจะขึ้นเป็นตัวสีเขียวใต้คำถามเองภายในไม่กี่วินาที · ถ้าเว้นว่าง จะใช้วิธีแตะเพื่อเปิด Claude แทน (ฟรี) · key เก็บไว้ในเครื่องนี้เท่านั้น</p>
+  <input id="optKey" class="wide" type="password" placeholder="sk-ant-… (เว้นว่างได้)" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <div class="row"><label>โมเดล</label>
+    <select id="optModel"><option value="claude-haiku-5-5">Haiku 5.5 (เร็วสุด)</option><option value="claude-sonnet-5-5">Sonnet 5.5 (แม่นกว่า)</option></select></div>
+
+  <h3>วิธีใช้ / ข้อควรระวัง</h3>
+  <div class="help"><ol>
+    <li>เปิดใน <b>Safari</b> และกด Allow ไมโครโฟน · เปิด Dictation ไว้ (Settings → General → Keyboard)</li>
+    <li>ภาษา "ไทย (ปนอังกฤษ)" ถอดได้ดีที่สุดเมื่อพูดไทยเป็นหลัก ศัพท์อังกฤษบางคำอาจออกมาเป็นตัวไทยหรือเพี้ยน — Claude ตีความจากบริบทให้</li>
+    <li>เมื่อแตะ "ถาม Claude" ระบบจะ Copy คำถามไว้ด้วย ถ้าเปิดแอป Claude แล้วช่องพิมพ์ว่าง ให้กดค้าง → Paste</li>
+    <li>สลับไปแอป Claude แล้ว iOS จะหยุดฟังชั่วคราว กลับมาแล้วแอปจะฟังต่อเอง</li>
+    <li>คำตอบจาก AI อาจผิดได้ ใช้ช่วยคิด/ทบทวน ไม่ใช้แทน clinical judgment</li>
+    <li>ข้อความที่ถอดเสียงอาจถูกประมวลผลบนเซิร์ฟเวอร์ของ Apple และของ Claude — หลีกเลี่ยงการพูดชื่อ/HN ผู้ป่วย และทำตามนโยบายของโรงพยาบาล</li>
+  </ol></div>
+  <button class="btn danger" id="clearBtn">ล้าง transcript ทั้งหมด</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const K_SET = "wra.settings.v1", K_DATA = "wra.data.v1";
+const settings = Object.assign({ lang: "th-TH", auto: true, len: "short", redact: true, keep: false, fs: 18, key: "", model: "claude-haiku-5-5", gap: 3 }, store.get(K_SET, {}));
+const saveSettings = () => store.set(K_SET, settings);
+
+let data = settings.keep ? store.get(K_DATA, null) : null;
+if (!data) data = { case: "", segs: [], elapsed: 0 };
+const saveData = () => { if (settings.keep) store.set(K_DATA, data); else store.del(K_DATA); };
+
+/* ---------- question detection ---------- */
+const TH_Q = /(อะไร|ไหม(?!้)|มั้ย|มั๊ย|ไม๊|ยังไง|อย่างไร|เท่าไร|เท่าไหร่|กี่|ทำไม|หรือเปล่า|รึเปล่า|หรือไม่|บ้าง|ที่ไหน|ตรงไหน|อันไหน|แบบไหน|ตัวไหน|เมื่อไหร่|เมื่อไร|ใคร|ว่าไง|ลองบอก|บอกซิ|บอกสิ|บอกหน่อย|ตอบซิ|ตอบสิ|อธิบาย|ยกตัวอย่าง)/;
+const EN_Q = /\?|\b(what|what's|why|how|which|when|where|who|tell me|explain|describe|define|anyone|any idea|can you|could you|do you know|name (?:the|some|a|two|three|four|five))\b/i;
+const isQuestion = t => TH_Q.test(t) || EN_Q.test(t);
+
+/* ---------- rendering ---------- */
+const segsEl = $("segs"), interimEl = $("interim"), mainEl = $("main");
+const fmt = ms => { const s = Math.floor(ms/1000), m = Math.floor(s/60), x = s%60; return String(m).padStart(2,"0") + ":" + String(x).padStart(2,"0"); };
+let recording = false, rec = null, startedAt = 0, lastFinalAt = 0, restartTimes = [], wakeLock = null, tick = null;
+
+function segNode(seg, i){
+  const p = document.createElement("div"); p.className = "seg" + (seg.q ? " q" : "");
+  const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = fmt(seg.t);
+  const tx = document.createElement("span"); tx.className = "tx"; tx.textContent = seg.text;
+  tx.contentEditable = recording ? "false" : "true";
+  tx.addEventListener("input", () => { seg.text = tx.textContent; saveData(); });
+  p.append(ts, tx);
+  if (seg.q) p.appendChild(ansNode(seg, i));
+  return p;
+}
+function ansNode(seg, i){
+  const a = document.createElement("div"); a.className = "ans" + (seg.err ? " err" : "");
+  if (seg.ans || seg.loading){
+    const t = document.createElement("div"); t.textContent = seg.ans || ""; if (seg.loading) t.className = "cursor";
+    a.appendChild(t);
+  }
+  if (seg.err){ const e = document.createElement("div"); e.textContent = seg.err; a.appendChild(e); }
+  const acts = document.createElement("div"); acts.className = "acts";
+  const b1 = document.createElement("button"); b1.className = seg.ans ? "" : "main";
+  b1.textContent = seg.ans ? "ถามต่อใน Claude ↗" : "👉 ถาม Claude ↗";
+  b1.onclick = () => openClaude(i);
+  const b2 = document.createElement("button"); b2.textContent = "Copy คำถาม";
+  b2.onclick = () => copy(buildPrompt(i), "Copy แล้ว — ไปแปะในแอป Claude ได้เลย");
+  acts.append(b1, b2);
+  if (settings.key && !seg.loading){
+    const b3 = document.createElement("button"); b3.textContent = seg.ans ? "↻ ตอบใหม่" : "⚡ ตอบที่นี่";
+    b3.onclick = () => answer(i, true); acts.appendChild(b3);
+  }
+  const b4 = document.createElement("button"); b4.textContent = "✕ ไม่ใช่คำถาม";
+  b4.onclick = () => { seg.q = false; delete seg.ans; delete seg.err; rerender(i); saveData(); updateCount(); };
+  acts.appendChild(b4);
+  a.appendChild(acts);
+  if (!settings.key && !seg.ans){
+    const h = document.createElement("div"); h.className = "hint"; h.textContent = "แตะแล้วจะเปิด Claude พร้อมคำถาม + บริบทเคส (Copy ไว้ให้ด้วย)"; a.appendChild(h);
+  }
+  return a;
+}
+function rerender(i){
+  const old = segsEl.children[i]; if (!old) return;
+  segsEl.replaceChild(segNode(data.segs[i], i), old);
+}
+function renderAll(){
+  segsEl.textContent = ""; data.segs.forEach((s, i) => segsEl.appendChild(segNode(s, i)));
+  interimEl.textContent = ""; updateEmpty(); updateCount(); updateTimer(); updateCaseBar();
+}
+function updateEmpty(){ $("empty").style.display = (data.segs.length || interimEl.textContent) ? "none" : "block"; }
+function updateCount(){ $("qCount").textContent = data.segs.filter(s => s.q).length + " คำถาม"; }
+function updateCaseBar(){ const c = $("caseBar"); c.textContent = data.case ? "📋 " + data.case.replace(/\s+/g, " ") : ""; c.classList.toggle("show", !!data.case); }
+let nearBottom = true;
+mainEl.addEventListener("scroll", () => { nearBottom = mainEl.scrollHeight - mainEl.scrollTop - mainEl.clientHeight < 140; });
+const autoscroll = () => { if (nearBottom) mainEl.scrollTop = mainEl.scrollHeight; };
+function applyView(){
+  document.documentElement.style.setProperty("--fs", settings.fs + "px");
+  $("langSel").value = settings.lang;
+  const chip = $("autoChip"); chip.classList.toggle("on", settings.auto); chip.textContent = "ตรวจจับ: " + (settings.auto ? "เปิด" : "ปิด");
+  $("modeTxt").textContent = settings.key ? "ตรวจจับคำถาม → คำตอบขึ้นอัตโนมัติ" : "ตรวจจับคำถาม → แตะเพื่อถาม Claude";
+}
+
+/* ---------- prompts ---------- */
+const redact = t => settings.redact ? t.replace(/\d[\d\s-]{4,}\d/g, "[ตัวเลข]") : t;
+function buildPrompt(i){
+  const seg = data.segs[i];
+  const prev = data.segs.slice(Math.max(0, i - 3), i).map(s => s.text).join(" … ");
+  const len = { short: "ตอบสั้นมาก 3–5 bullet ให้พูดตอบอาจารย์ได้ทันที", mid: "ตอบกระชับ 5–8 bullet พร้อมเหตุผลสั้น ๆ", long: "ตอบละเอียด เป็นหัวข้อ พร้อม key reference (textbook/paper) ท้ายคำตอบ" }[settings.len];
+  return redact(
+`ฉันเป็น plastic surgery resident กำลังอยู่ใน ward round อาจารย์เพิ่งถามคำถาม (ข้อความถอดเสียงอัตโนมัติ ไทยปนอังกฤษ อาจมีคำผิด ให้ตีความจากบริบท)
+
+คำถาม: "${seg.text.trim()}"
+${prev ? `บริบทก่อนหน้า: "${prev}"\n` : ""}${data.case ? `ข้อมูลเคส: ${data.case.trim()}\n` : ""}
+${len} ใช้ภาษาไทยปนศัพท์แพทย์ภาษาอังกฤษ ถ้าคำถามกำกวมให้ตอบตามการตีความที่น่าจะเป็นที่สุด และบอกสั้น ๆ ว่าตีความว่าอะไร`);
+}
+async function openClaude(i){
+  const p = buildPrompt(i);
+  await copy(p, "Copy คำถามไว้แล้ว ✓");
+  const a = document.createElement("a"); a.href = "https://claude.ai/new?q=" + encodeURIComponent(p); a.target = "_blank"; a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---------- optional API answering (only if user saved a key) ---------- */
+async function answer(i, force){
+  const seg = data.segs[i];
+  if (!settings.key || !seg || !seg.q) return;
+  if (seg.loading || (seg.ans && !force)) return;
+  seg.loading = true; seg.ans = ""; delete seg.err; rerender(i);
+  const node = () => segsEl.children[i] && segsEl.children[i].querySelector(".ans > div");
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": settings.key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: settings.model, max_tokens: settings.len === "long" ? 1200 : 450, stream: true,
+        messages: [{ role: "user", content: buildPrompt(i) }] })
+    });
+    if (!res.ok){
+      let msg = "HTTP " + res.status;
+      try { const j = await res.json(); msg = (j.error && j.error.message) || msg; } catch(e){}
+      throw new Error(res.status === 401 ? "API key ไม่ถูกต้อง" : msg);
+    }
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = "";
+    for (;;){
+      const { done, value } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let k;
+      while ((k = buf.indexOf("\n\n")) >= 0){
+        const ev = buf.slice(0, k); buf = buf.slice(k + 2);
+        const line = ev.split("\n").find(l => l.startsWith("data:")); if (!line) continue;
+        let d; try { d = JSON.parse(line.slice(5)); } catch(e){ continue; }
+        if (d.type === "content_block_delta" && d.delta && d.delta.text){ seg.ans += d.delta.text; const n = node(); if (n) n.textContent = seg.ans; autoscroll(); }
+        if (d.type === "error") throw new Error((d.error && d.error.message) || "error");
+      }
+    }
+  } catch(e){ seg.err = "ตอบไม่สำเร็จ: " + e.message + " — แตะ 'ถาม Claude' แทนได้"; }
+  seg.loading = false; rerender(i); saveData(); autoscroll();
+}
+const pendingAsk = {};
+function scheduleAnswer(i){ // wait a moment so the attending can finish the question
+  if (!settings.key) return;
+  clearTimeout(pendingAsk[i]);
+  pendingAsk[i] = setTimeout(() => answer(i), 1600);
+}
+function markQuestion(i){
+  const seg = data.segs[i]; if (!seg) return;
+  if (!seg.q){ seg.q = true; rerender(i); updateCount(); autoscroll(); }
+  scheduleAnswer(i);
+}
+
+/* ---------- speech ---------- */
+function banner(html){ const b = $("banner"); b.innerHTML = html || ""; b.classList.toggle("show", !!html); }
+const elapsedNow = () => data.elapsed + (recording ? Date.now() - startedAt : 0);
+const updateTimer = () => { $("timer").textContent = fmt(elapsedNow()); };
+function appendFinal(text){
+  text = text.trim(); if (!text) return;
+  const now = Date.now(), last = data.segs[data.segs.length - 1];
+  const join = last && lastFinalAt && (now - lastFinalAt) < settings.gap * 1000 && last.text.length < 300;
+  let i;
+  if (join){ last.text = last.text.replace(/\s+$/, "") + " " + text; i = data.segs.length - 1; rerender(i); }
+  else { data.segs.push({ t: Math.max(0, elapsedNow() - 1500), text }); i = data.segs.length - 1; segsEl.appendChild(segNode(data.segs[i], i)); }
+  lastFinalAt = now;
+  if (askNext){ askNext = false; clearTimeout(askT); markQuestion(i); }
+  else if (settings.auto && isQuestion(text)) markQuestion(i);
+  else if (data.segs[i].q) scheduleAnswer(i);   // question continued in same utterance
+  updateEmpty(); autoscroll(); saveData();
+}
+function launch(){
+  if (!recording) return;
+  const r = new SR(); rec = r;
+  r.lang = settings.lang; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+  const done = new Set(); let pending = "";
+  r.onresult = e => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++){
+      const res = e.results[i], t = res[0].transcript;
+      if (res.isFinal){ if (!done.has(i)){ done.add(i); appendFinal(t); } } else interim += t;
+    }
+    pending = interim; interimEl.textContent = interim; updateEmpty(); autoscroll();
+  };
+  r.onerror = e => {
+    if (e.error === "not-allowed" || e.error === "service-not-allowed"){ recording = false;
+      banner("🎙 เข้าถึงไมโครโฟนไม่ได้ — กด Allow ไมโครโฟน และเปิด Dictation (Settings → General → Keyboard → Enable Dictation) แล้วลองใหม่"); }
+    else if (e.error === "network") toast("สัญญาณเน็ตมีปัญหา — กำลังลองใหม่…");
+    else if (e.error === "language-not-supported"){ recording = false; banner("ภาษานี้ไม่รองรับในเบราว์เซอร์นี้"); }
+  };
+  r.onend = () => {
+    if (pending){ appendFinal(pending); pending = ""; }
+    interimEl.textContent = "";
+    if (rec === r) rec = null;
+    if (!recording){ finishStop(); return; }
+    const now = Date.now(); restartTimes = restartTimes.filter(t => now - t < 10000); restartTimes.push(now);
+    if (restartTimes.length > 8){ recording = false; banner("ระบบถอดเสียงหยุดซ้ำ ๆ — ตรวจสิทธิ์ไมโครโฟน/อินเทอร์เน็ต แล้วกดเริ่มใหม่"); finishStop(); return; }
+    if (document.visibilityState === "visible") setTimeout(launch, 200);
+  };
+  try { r.start(); } catch(err){ setTimeout(() => { if (recording && !rec) launch(); }, 500); }
+}
+async function wakeOn(){ if ("wakeLock" in navigator){ try { wakeLock = await navigator.wakeLock.request("screen"); } catch(e){} } }
+function wakeOff(){ try { wakeLock && wakeLock.release(); } catch(e){} wakeLock = null; }
+function setUI(){
+  document.body.classList.toggle("rec", recording);
+  $("stateTxt").textContent = recording ? "กำลังฟัง…" : "พร้อม";
+  $("langSel").disabled = recording;
+  segsEl.querySelectorAll(".tx").forEach(t => t.contentEditable = recording ? "false" : "true");
+}
+function start(){
+  if (!SR){ banner("เบราว์เซอร์นี้ไม่รองรับการถอดเสียง — บน iPhone ให้ใช้ <b>Safari</b>"); return; }
+  banner(""); recording = true; startedAt = Date.now(); lastFinalAt = 0; restartTimes = [];
+  setUI(); wakeOn(); tick = setInterval(updateTimer, 500); launch();
+}
+function stop(){
+  recording = false; setUI();
+  const r = rec;
+  if (r){ try { r.stop(); } catch(e){ finishStop(); } setTimeout(() => { if (rec === r && !recording){ try{ r.abort(); }catch(e){} rec = null; finishStop(); } }, 2500); }
+  else finishStop();
+}
+function finishStop(){
+  if (recording) return;
+  if (startedAt){ data.elapsed += Date.now() - startedAt; startedAt = 0; }
+  clearInterval(tick); tick = null; wakeOff(); setUI(); updateTimer(); updateEmpty(); saveData();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && recording){ wakeOn(); if (!rec){ toast("กลับมาฟังต่อแล้ว"); launch(); } }
+});
+
+/* ---------- manual ask ---------- */
+let askNext = false, askT = null;
+$("askBtn").onclick = () => {
+  if (recording && interimEl.textContent.trim()){
+    // sentence still being spoken: mark it as soon as it is finalised
+    askNext = true; toast("จะไฮไลต์ประโยคนี้เป็นคำถามทันทีที่พูดจบ");
+    clearTimeout(askT);
+    askT = setTimeout(() => { if (askNext && data.segs.length){ askNext = false; markQuestion(data.segs.length - 1); } }, 6000);
+    return;
+  }
+  if (!data.segs.length) return toast("ยังไม่มีข้อความ — กด ● เพื่อเริ่มฟังก่อน");
+  markQuestion(data.segs.length - 1);
+  if (!settings.key) toast("ไฮไลต์ประโยคล่าสุดเป็นคำถามแล้ว — แตะแถบเขียวเพื่อถาม Claude");
+};
+
+/* ---------- utils & wiring ---------- */
+async function copy(text, msg){
+  try { await navigator.clipboard.writeText(text); toast(msg); return; } catch(e){}
+  const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false; try { ok = document.execCommand("copy"); } catch(e){} ta.remove();
+  toast(ok ? msg : "Copy ไม่สำเร็จ");
+}
+let toastT = null;
+function toast(m){ const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+const sheets = ["caseSheet", "setSheet"];
+function openSheet(id){ sheets.forEach(s => $(s).classList.toggle("show", s === id)); $("backdrop").classList.add("show"); }
+function closeSheets(){ sheets.forEach(s => $(s).classList.remove("show")); $("backdrop").classList.remove("show"); }
+$("backdrop").onclick = closeSheets;
+$("recBtn").onclick = () => recording ? stop() : start();
+$("caseBtn").onclick = () => { $("caseTxt").value = data.case; openSheet("caseSheet"); };
+$("caseSave").onclick = () => { data.case = $("caseTxt").value.trim(); saveData(); updateCaseBar(); closeSheets(); toast(data.case ? "ใช้ข้อมูลเคสนี้แล้ว" : "ล้างข้อมูลเคสแล้ว"); };
+$("caseNext").onclick = () => { data.case = ""; data.segs = []; data.elapsed = recording ? data.elapsed : 0; $("caseTxt").value = ""; saveData(); renderAll(); closeSheets(); toast("พร้อมสำหรับเตียงถัดไป"); };
+$("settingsBtn").onclick = () => {
+  $("optAuto").checked = settings.auto; $("optLen").value = settings.len; $("optRedact").checked = settings.redact; $("optKeep").checked = settings.keep;
+  $("optKey").value = settings.key; $("optModel").value = settings.model; openSheet("setSheet");
+};
+$("autoChip").onclick = () => { settings.auto = !settings.auto; saveSettings(); applyView(); toast(settings.auto ? "เปิดตรวจจับคำถาม" : "ปิดตรวจจับ — ใช้ปุ่ม ❓ ถามเลย แทน"); };
+$("optAuto").onchange = e => { settings.auto = e.target.checked; saveSettings(); applyView(); };
+$("optLen").onchange = e => { settings.len = e.target.value; saveSettings(); };
+$("optRedact").onchange = e => { settings.redact = e.target.checked; saveSettings(); };
+$("optKeep").onchange = e => { settings.keep = e.target.checked; saveSettings(); saveData(); };
+$("optKey").onchange = e => { settings.key = e.target.value.trim(); saveSettings(); applyView(); renderAll(); toast(settings.key ? "บันทึก key แล้ว — คำตอบจะขึ้นอัตโนมัติ" : "ลบ key แล้ว"); };
+$("optModel").onchange = e => { settings.model = e.target.value; saveSettings(); };
+$("langSel").onchange = () => { settings.lang = $("langSel").value; saveSettings(); };
+$("fsUp").onclick = () => { settings.fs = Math.min(32, settings.fs + 2); saveSettings(); applyView(); };
+$("fsDown").onclick = () => { settings.fs = Math.max(13, settings.fs - 2); saveSettings(); applyView(); };
+$("clearBtn").onclick = e => {
+  const b = e.currentTarget;
+  if (!b.dataset.armed){ b.dataset.armed = "1"; b.textContent = "แตะอีกครั้งเพื่อยืนยัน"; return; }
+  data.segs = []; data.elapsed = 0; saveData(); renderAll(); b.dataset.armed = ""; b.textContent = "ล้าง transcript ทั้งหมด"; closeSheets();
+};
+window.addEventListener("pagehide", saveData);
+
+applyView(); renderAll();
+if (!SR) banner("เบราว์เซอร์นี้ไม่รองรับการถอดเสียง — บน iPhone ให้ใช้ <b>Safari</b>");
+window.__wra = { get data(){ return data; }, isQuestion, buildPrompt, redact };
+})();
+</script>
+</body>
+</html>
